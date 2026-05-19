@@ -2,231 +2,100 @@
 
 namespace App\Livewire;
 
-use App\Models\InventoryCategory;
-use App\Models\InventoryItem;
 use Livewire\Component;
-use Livewire\WithPagination;
+use App\Livewire\Forms\ItemForm;
+use App\Livewire\Forms\CategoryForm;
 
 class Inventario extends Component
 {
-    use WithPagination;
+    // 1. Instanciamos los Form Objects
+    public ItemForm $itemForm;
+    public CategoryForm $categoryForm;
 
-    public string $search = '';
-    public string $filterCategory = '';
-    public string $filterCondition = '';
+    // 2. Variables de estado para los modales de la interfaz
+    public $showModal = false;          // Controla el modal de herramientas/ítems
+    public $showCategoryModal = false;  // Controla el modal de categorías 
+    public $showDeleteModal = false; 
 
-    public bool $showModal = false;
-    public bool $showDeleteModal = false;
-    public ?int $editingId = null;
-    public ?int $deletingId = null;
+    // 3. Estado de edición
+    public $editingId = null;           // Guarda el ID cuando se edita un registro
+    public $isEditingCategory = false;  // Banderas de control de edición de categorías
 
-    public int|string $category_id = '';
-    public string $brand = '';
-    public string $model = '';
-    public string $serial_number = '';
-    public string $description = '';
-    public string $condition = 'bueno';
-    public string $observations = '';
-    public string $previewCode = '';
+    // 4. Vista previa de códigos
+    public $previewCode = '';           // Almacena el código correlativo previo
 
-    public bool $showCategoryModal = false;
-    public bool $isEditingCategory = false;
-    public ?int $editingCategoryId = null;
-    public string $newCategoryName = '';
-    public string $newCategoryPrefix = '';
-    public string $newCategoryDescription = '';
-
-    public function updatedSearch(): void { $this->resetPage(); }
-    public function updatedFilterCategory(): void { $this->resetPage(); }
-    public function updatedFilterCondition(): void { $this->resetPage(); }
-
-    public function updatedCategoryId(): void
+    /**
+     * Motor de guardado para el modal de Herramientas (Ítems)
+     */
+  public function saveItem()
     {
-        if ($this->category_id && !$this->editingId) {
-            $cat = InventoryCategory::find($this->category_id);
-            $this->previewCode = $cat ? $cat->generateNextCode() : '';
-        }
-    }
+        // 1. Valida usando las reglas de ItemForm.php
+        $this->itemForm->validate();
 
-    public function openCreate(): void
-    {
-        $this->resetForm();
-        $this->editingId = null;
-        $this->showModal = true;
-    }
+        // 2. Extraemos los datos limpios del formulario en un array
+        $data = $this->itemForm->all();
 
-    public function openEdit(int $id): void
-    {
-        $item = InventoryItem::findOrFail($id);
-        $this->editingId     = $id;
-        $this->category_id   = $item->category_id;
-        $this->brand         = $item->brand;
-        $this->model         = $item->model ?? '';
-        $this->serial_number = $item->serial_number ?? '';
-        $this->description   = $item->description ?? '';
-        $this->condition     = $item->condition;
-        $this->observations  = $item->observations ?? '';
-        $this->previewCode   = $item->code;
-        $this->showModal     = true;
-    }
+        // 3. Obtenemos el prefijo de la categoría seleccionada (ej: AMP)
+        $category = \App\Models\InventoryCategory::find($data['category_id']);
+        $prefix = $category ? $category->prefix : 'HERR';
 
-    public function save(): void
-    {
-        $this->validate([
-            'category_id'   => 'required|exists:inventory_categories,id',
-            'brand'         => 'required|string|max:100',
-            'model'         => 'nullable|string|max:100',
-            'serial_number' => 'nullable|string|max:100',
-            'description'   => 'nullable|string|max:255',
-            'condition'     => 'required|in:bueno,malogrado,en_revision',
-            'observations'  => 'nullable|string|max:500',
-        ]);
+        // 4. Buscamos cuántas herramientas existen ya en esta categoría para calcular el correlativo
+        $count = \App\Models\InventoryItem::where('category_id', $data['category_id'])->count();
+        $nextNumber = str_pad($count + 1, 3, '0', STR_PAD_LEFT); // Formatea a 3 dígitos (ej: 001, 002)
 
-        if ($this->editingId) {
-            InventoryItem::findOrFail($this->editingId)->update([
-                'category_id'   => $this->category_id,
-                'brand'         => $this->brand,
-                'model'         => $this->model ?: null,
-                'serial_number' => $this->serial_number ?: null,
-                'description'   => $this->description ?: null,
-                'condition'     => $this->condition,
-                'observations'  => $this->observations ?: null,
-            ]);
-        } else {
-            $category = InventoryCategory::findOrFail($this->category_id);
-            InventoryItem::create([
-                'category_id'   => $this->category_id,
-                'code'          => $category->generateNextCode(),
-                'brand'         => $this->brand,
-                'model'         => $this->model ?: null,
-                'serial_number' => $this->serial_number ?: null,
-                'description'   => $this->description ?: null,
-                'condition'     => $this->condition,
-                'observations'  => $this->observations ?: null,
-            ]);
-        }
+        // 5. Inyectamos el código autogenerado al array antes de guardar (ej: AMP-001)
+        $data['code'] = $prefix . '-' . $nextNumber;
 
+        // 6. Creamos el registro oficial en la base de datos con su código incluido
+        \App\Models\InventoryItem::create($data);
+
+        // 7. Limpiamos el formulario y cerramos el modal
+        $this->itemForm->reset();
         $this->showModal = false;
-        $this->resetForm();
+
+        session()->flash('message', 'Herramienta guardada con éxito.');
     }
-
-    public function confirmDelete(int $id): void
+    /**
+     * Motor de guardado para el modal de Categorías
+     */
+    public function saveCategory()
     {
-        $this->deletingId      = $id;
-        $this->showDeleteModal = true;
-    }
+        // 1. Valida usando las reglas de CategoryForm.php
+        $this->categoryForm->validate();
 
-    public function delete(): void
-    {
-        if ($this->deletingId) {
-            InventoryItem::findOrFail($this->deletingId)->delete();
-        }
-        $this->showDeleteModal = false;
-        $this->deletingId      = null;
-    }
+        // 2. Inserta la nueva categoría en la base de datos de manera oficial
+        \App\Models\InventoryCategory::create($this->categoryForm->all());
 
-    public function openCategoryCreate(): void
-    {
-        $this->resetCategoryForm();
-        $this->isEditingCategory = false;
-        $this->showCategoryModal = true;
-    }
-
-    public function openCategoryEdit(int $id): void
-    {
-        $this->resetCategoryForm();
-        $category = InventoryCategory::findOrFail($id);
-        
-        $this->editingCategoryId = $id;
-        $this->newCategoryName = $category->name;
-        $this->newCategoryPrefix = $category->prefix;
-        $this->newCategoryDescription = $category->description ?? '';
-        
-        $this->isEditingCategory = true;
-        $this->showCategoryModal = true;
-    }
-
-    public function saveCategory(): void
-    {
-        $this->validate([
-            'newCategoryName'        => 'required|string|min:3|max:100',
-            'newCategoryPrefix'      => 'required|string|max:10|unique:inventory_categories,prefix',
-            'newCategoryDescription' => 'nullable|string|max:255',
-        ]);
-
-        InventoryCategory::create([
-            'name'        => $this->newCategoryName,
-            'prefix'      => strtoupper($this->newCategoryPrefix),
-            'description' => $this->newCategoryDescription ?: null,
-        ]);
-
+        // 3. Limpia el formulario y apaga el modal
+        $this->categoryForm->reset();
         $this->showCategoryModal = false;
-        $this->resetCategoryForm();
-        session()->flash('category_success', '¡Nueva categoría guardada con éxito!');
+
+        // Opcional: Alerta de éxito para la interfaz
+        session()->flash('message', 'Categoría registrada con éxito.');
     }
 
-    public function updateCategory(): void
+    public function save()
     {
-        $this->validate([
-            'newCategoryName'        => 'required|string|min:3|max:100',
-            'newCategoryPrefix'      => 'required|string|max:10|unique:inventory_categories,prefix,' . $this->editingCategoryId,
-            'newCategoryDescription' => 'nullable|string|max:255',
-        ]);
-
-        $category = InventoryCategory::findOrFail($this->editingCategoryId);
-        $category->update([
-            'name'        => $this->newCategoryName,
-            'prefix'      => strtoupper($this->newCategoryPrefix),
-            'description' => $this->newCategoryDescription ?: null,
-        ]);
-
-        $this->showCategoryModal = false;
-        $this->resetCategoryForm();
-        session()->flash('category_success', '¡Categoría actualizada correctamente!');
-    }
-
-    private function resetForm(): void
-    {
-        $this->category_id   = '';
-        $this->brand         = '';
-        $this->model         = '';
-        $this->serial_number = '';
-        $this->description   = '';
-        $this->condition     = 'bueno';
-        $this->observations  = '';
-        $this->previewCode   = '';
-        $this->resetValidation();
-    }
-
-    private function resetCategoryForm(): void
-    {
-        $this->newCategoryName = '';
-        $this->newCategoryPrefix = '';
-        $this->newCategoryDescription = '';
-        $this->editingCategoryId = null;
-        $this->resetValidation();
+        $this->saveItem();
     }
 
     public function render()
     {
-        $items = InventoryItem::with('category')
-            ->when($this->search, fn($q) =>
-                $q->where('code', 'like', "%{$this->search}%")
-                  ->orWhere('brand', 'like', "%{$this->search}%")
-                  ->orWhere('model', 'like', "%{$this->search}%")
-                  ->orWhere('serial_number', 'like', "%{$this->search}%")
-            )
-            ->when($this->filterCategory, fn($q) =>
-                $q->where('category_id', $this->filterCategory)
-            )
-            ->when($this->filterCondition, fn($q) =>
-                $q->where('condition', $this->filterCondition)
-            )
-            ->latest()
-            ->paginate(10);
+        return view('livewire.inventario', [
+            'categories' => \App\Models\InventoryCategory::all(), 
+            'items' => \App\Models\InventoryItem::paginate(10), 
+        ]);
+    }
 
-        $categories = InventoryCategory::orderBy('name')->get();
+    public function openCreate()
+    {
+        $this->itemForm->reset(); 
+        $this->showModal = true; 
+    }
 
-        return view('livewire.inventario', compact('items', 'categories'));
+    public function openCategoryCreate()
+    {
+        $this->categoryForm->reset(); 
+        $this->showCategoryModal = true; 
     }
 }
