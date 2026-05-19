@@ -29,6 +29,13 @@ class Inventario extends Component
     public string $observations = '';
     public string $previewCode = '';
 
+    public bool $showCategoryModal = false;
+    public bool $isEditingCategory = false;
+    public ?int $editingCategoryId = null;
+    public string $newCategoryName = '';
+    public string $newCategoryPrefix = '';
+    public string $newCategoryDescription = '';
+
     public function updatedSearch(): void { $this->resetPage(); }
     public function updatedFilterCategory(): void { $this->resetPage(); }
     public function updatedFilterCondition(): void { $this->resetPage(); }
@@ -118,6 +125,66 @@ class Inventario extends Component
         $this->deletingId      = null;
     }
 
+    public function openCategoryCreate(): void
+    {
+        $this->resetCategoryForm();
+        $this->isEditingCategory = false;
+        $this->showCategoryModal = true;
+    }
+
+    public function openCategoryEdit(int $id): void
+    {
+        $this->resetCategoryForm();
+        $category = InventoryCategory::findOrFail($id);
+        
+        $this->editingCategoryId = $id;
+        $this->newCategoryName = $category->name;
+        $this->newCategoryPrefix = $category->prefix;
+        $this->newCategoryDescription = $category->description ?? '';
+        
+        $this->isEditingCategory = true;
+        $this->showCategoryModal = true;
+    }
+
+    public function saveCategory(): void
+    {
+        $this->validate([
+            'newCategoryName'        => 'required|string|min:3|max:100',
+            'newCategoryPrefix'      => 'required|string|max:10|unique:inventory_categories,prefix',
+            'newCategoryDescription' => 'nullable|string|max:255',
+        ]);
+
+        InventoryCategory::create([
+            'name'        => $this->newCategoryName,
+            'prefix'      => strtoupper($this->newCategoryPrefix),
+            'description' => $this->newCategoryDescription ?: null,
+        ]);
+
+        $this->showCategoryModal = false;
+        $this->resetCategoryForm();
+        session()->flash('category_success', '¡Nueva categoría guardada con éxito!');
+    }
+
+    public function updateCategory(): void
+    {
+        $this->validate([
+            'newCategoryName'        => 'required|string|min:3|max:100',
+            'newCategoryPrefix'      => 'required|string|max:10|unique:inventory_categories,prefix,' . $this->editingCategoryId,
+            'newCategoryDescription' => 'nullable|string|max:255',
+        ]);
+
+        $category = InventoryCategory::findOrFail($this->editingCategoryId);
+        $category->update([
+            'name'        => $this->newCategoryName,
+            'prefix'      => strtoupper($this->newCategoryPrefix),
+            'description' => $this->newCategoryDescription ?: null,
+        ]);
+
+        $this->showCategoryModal = false;
+        $this->resetCategoryForm();
+        session()->flash('category_success', '¡Categoría actualizada correctamente!');
+    }
+
     private function resetForm(): void
     {
         $this->category_id   = '';
@@ -128,6 +195,15 @@ class Inventario extends Component
         $this->condition     = 'bueno';
         $this->observations  = '';
         $this->previewCode   = '';
+        $this->resetValidation();
+    }
+
+    private function resetCategoryForm(): void
+    {
+        $this->newCategoryName = '';
+        $this->newCategoryPrefix = '';
+        $this->newCategoryDescription = '';
+        $this->editingCategoryId = null;
         $this->resetValidation();
     }
 
@@ -152,6 +228,5 @@ class Inventario extends Component
         $categories = InventoryCategory::orderBy('name')->get();
 
         return view('livewire.inventario', compact('items', 'categories'));
-    
-        }
+    }
 }
