@@ -5,9 +5,17 @@ namespace App\Livewire;
 use Livewire\Component;
 use App\Livewire\Forms\ItemForm;
 use App\Livewire\Forms\CategoryForm;
+use App\Models\InventoryItem;
+use Livewire\WithPagination;
 
 class Inventario extends Component
 {
+    use WithPagination;
+
+    public $search = '';
+    public $selectedCategory = '';
+    public $selectedCondition = '';
+
     // 1. Instanciamos los Form Objects
     public ItemForm $itemForm;
     public CategoryForm $categoryForm;
@@ -46,8 +54,13 @@ class Inventario extends Component
         // 5. Inyectamos el código autogenerado al array antes de guardar (ej: AMP-001)
         $data['code'] = $prefix . '-' . $nextNumber;
 
-        // 6. Creamos el registro oficial en la base de datos con su código incluido
-        \App\Models\InventoryItem::create($data);
+        try {
+            // 6. Creamos el registro oficial en la base de datos con su código incluido
+            \App\Models\InventoryItem::create($data);
+        } catch (\Exception $e) {
+            session()->flash('error', 'Ocurrió un error al guardar la herramienta (posible código duplicado). Inténtalo de nuevo.');
+            return;
+        }
 
         // 7. Limpiamos el formulario y cerramos el modal
         $this->itemForm->reset();
@@ -55,6 +68,8 @@ class Inventario extends Component
 
         session()->flash('message', 'Herramienta guardada con éxito.');
     }
+
+    
     /**
      * Motor de guardado para el modal de Categorías
      */
@@ -79,11 +94,41 @@ class Inventario extends Component
         $this->saveItem();
     }
 
+    // --- AGREGA ESTOS MÉTODOS ABAJO DE TUS PROPIEDADES PÚBLICAS ---
+    // Resetean la paginación automáticamente cuando cambia cualquier filtro
+    public function updatingSearch() { $this->resetPage(); }
+    public function updatingSelectedCategory() { $this->resetPage(); }
+    public function updatingSelectedCondition() { $this->resetPage(); }
+
+
+    // --- REEMPLAZA TU MÉTODO RENDER POR ESTE OPTIMIZADO ---
     public function render()
     {
+        // Creamos una consulta base dinámica para los ítems
+        $itemsQuery = \App\Models\InventoryItem::query();
+
+        // 1. Filtro por barra de búsqueda (Busca en producto, marca o código si el usuario escribe algo)
+        $itemsQuery->when($this->search, function ($query) {
+            $query->where(function ($subQuery) {
+                $subQuery->where('producto', 'like', '%' . $this->search . '%')
+                         ->orWhere('marca', 'like', '%' . $this->search . '%')
+                         ->orWhere('code', 'like', '%' . $this->search . '%');
+            });
+        });
+
+        // 2. Filtro por Categoría seleccionada
+        $itemsQuery->when($this->selectedCategory, function ($query) {
+            $query->where('category_id', $this->selectedCategory);
+        });
+
+        // 3. Filtro por Condición (Bueno, Malogrado, etc.)
+        $itemsQuery->when($this->selectedCondition, function ($query) {
+            $query->where('condition', $this->selectedCondition); // Cambia 'condicion' por el nombre exacto de tu columna en la BD
+        });
+
         return view('livewire.inventario', [
             'categories' => \App\Models\InventoryCategory::all(), 
-            'items' => \App\Models\InventoryItem::paginate(10), 
+            'items' => $itemsQuery->paginate(10), // Mandamos la consulta ya filtrada y paginada
         ]);
     }
 

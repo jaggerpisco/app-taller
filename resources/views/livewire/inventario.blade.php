@@ -36,19 +36,18 @@
         </div>
     @endif
 
-    {{-- FILTROS RESPONSIVOS --}}
+   {{-- FILTROS RESPONSIVOS CORREGIDOS --}}
     <div class="flex flex-col sm:grid sm:grid-cols-3 gap-3 mb-6">
         <div class="relative">
             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
             </svg>
-            {{-- Vinculado a tus propiedades de búsqueda en el componente --}}
             <input wire:model.live.debounce.300ms="search" type="text"
                 placeholder="Buscar código, marca, modelo, serie..."
                 class="w-full pl-9 pr-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/10 transition"/>
         </div>
         
-        <select wire:model.live="filterCategory"
+        <select wire:model.live="selectedCategory"
             class="w-full text-sm bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/10 transition text-gray-900">
             <option value="">Todas las categorías</option>
             @foreach($categories as $cat)
@@ -56,7 +55,7 @@
             @endforeach
         </select>
 
-        <select wire:model.live="filterCondition"
+        <select wire:model.live="selectedCondition"
             class="w-full text-sm bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/10 transition text-gray-900">
             <option value="">Todas las condiciones</option>
             <option value="bueno">Bueno</option>
@@ -64,7 +63,6 @@
             <option value="en_revision">En Revisión</option>
         </select>
     </div>
-
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm shadow-gray-100/50">
         
         {{-- VISTA ESCRITORIO: Tabla clásica --}}
