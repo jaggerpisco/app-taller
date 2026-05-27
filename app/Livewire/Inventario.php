@@ -3,10 +3,13 @@
 namespace App\Livewire;
 
 use Livewire\Component;
+use Livewire\WithPagination;
 use App\Livewire\Forms\ItemForm;
 use App\Livewire\Forms\CategoryForm;
+
+
 use App\Models\InventoryItem;
-use Livewire\WithPagination;
+use App\Models\InventoryCategory;
 
 class Inventario extends Component
 {
@@ -22,8 +25,8 @@ class Inventario extends Component
 
     // 2. Variables de estado para los modales de la interfaz
     public $showModal = false;          // Controla el modal de herramientas/ítems
-    public $showCategoryModal = false;  // Controla el modal de categorías 
-    public $showDeleteModal = false; 
+    public $showCategoryModal = false;  // Controla el modal de categorías
+    public $showDeleteModal = false;
 
     // 3. Estado de edición
     public $editingId = null;           // Guarda el ID cuando se edita un registro
@@ -35,7 +38,7 @@ class Inventario extends Component
     /**
      * Motor de guardado para el modal de Herramientas (Ítems)
      */
-  public function saveItem()
+    public function saveItem()
     {
         // 1. Valida usando las reglas de ItemForm.php
         $this->itemForm->validate();
@@ -69,7 +72,7 @@ class Inventario extends Component
         session()->flash('message', 'Herramienta guardada con éxito.');
     }
 
-    
+
     /**
      * Motor de guardado para el modal de Categorías
      */
@@ -104,15 +107,16 @@ class Inventario extends Component
     // --- REEMPLAZA TU MÉTODO RENDER POR ESTE OPTIMIZADO ---
     public function render()
     {
-        // Creamos una consulta base dinámica para los ítems
-        $itemsQuery = \App\Models\InventoryItem::query();
+        // Consulta base dinámica usando el modelo importado correctamente
+        $itemsQuery = InventoryItem::query();
 
-        // 1. Filtro por barra de búsqueda (Busca en producto, marca o código si el usuario escribe algo)
+        // 1. Filtro por barra de búsqueda (Limpiado de columnas fantasmas)
         $itemsQuery->when($this->search, function ($query) {
             $query->where(function ($subQuery) {
-                $subQuery->where('producto', 'like', '%' . $this->search . '%')
-                         ->orWhere('marca', 'like', '%' . $this->search . '%')
-                         ->orWhere('code', 'like', '%' . $this->search . '%');
+                // Buscamos por los campos seguros que tu traza de error confirmó que existen:
+                $subQuery->where('model', 'like', '%' . $this->search . '%')          // Busca por modelo (ej: Fluke 115)
+                         ->orWhere('serial_number', 'like', '%' . $this->search . '%') // Busca por Número de Serie
+                         ->orWhere('code', 'like', '%' . $this->search . '%');         // Busca por Código correlativo
             });
         });
 
@@ -123,24 +127,37 @@ class Inventario extends Component
 
         // 3. Filtro por Condición (Bueno, Malogrado, etc.)
         $itemsQuery->when($this->selectedCondition, function ($query) {
-            $query->where('condition', $this->selectedCondition); // Cambia 'condicion' por el nombre exacto de tu columna en la BD
+            $query->where('condition', $this->selectedCondition);
         });
 
         return view('livewire.inventario', [
-            'categories' => \App\Models\InventoryCategory::all(), 
-            'items' => $itemsQuery->paginate(10), // Mandamos la consulta ya filtrada y paginada
+            'categories' => InventoryCategory::all(),
+            'items' => $itemsQuery->paginate(10), // Registros paginados y limpios de errores SQL
         ]);
     }
 
     public function openCreate()
     {
-        $this->itemForm->reset(); 
-        $this->showModal = true; 
+        $this->itemForm->reset();
+        $this->showModal = true;
     }
 
     public function openCategoryCreate()
     {
-        $this->categoryForm->reset(); 
-        $this->showCategoryModal = true; 
+        $this->categoryForm->reset();
+        $this->showCategoryModal = true;
+    }
+
+    public function openEdit($id)
+    {
+        // 1. Buscar el registro en la base de datos
+        $item = \App\Models\InventoryCategory::find($id);
+
+        // 2. Asignar los valores a las propiedades públicas de Livewire
+        $this->editId = $item->id;
+        $this->name = $item->name;
+
+        // 3. Abrir el modal (si estás usando una variable booleana para mostrar/ocultar)
+        $this->isEditModalOpen = true;
     }
 }
