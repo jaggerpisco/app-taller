@@ -9,10 +9,22 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        $driver = DB::getDriverName();
+
+        if ($driver === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        } elseif ($driver === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = OFF;');
+        }
+
         DB::table('inventory_items')->truncate();
         DB::table('inventory_categories')->truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+        if ($driver === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        } elseif ($driver === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = ON;');
+        }
 
         DB::table('inventory_categories')->insert([
             ['id' => 1, 'name' => 'Equipos de Medición', 'prefix' => 'MED', 'description' => 'Amperímetros, megómetros, niveles láser y analizadores', 'created_at' => now(), 'updated_at' => now()],
