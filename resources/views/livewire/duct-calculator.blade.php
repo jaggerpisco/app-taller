@@ -77,111 +77,276 @@
                 
                 // 3. Márgenes (Padding): Dejamos 80 píxeles de espacio libre alrededor del dibujo 
                 // para que las flechas y los textos no se salgan del cuadro y se corten.
-                $padX = 110;
-                $padY = 80;
+                $padX = max(120, $l_px * 0.12);
+                $padY = max(80, $w_px * 0.15);
                 
                 // 4. Tamaño total del lienzo = Tamaño de la pieza + los márgenes
                 $ancho_lienzo = $l_px + ($padX * 2);
                 $altura_lienzo = $w_px + $o_px + ($padY * 2);
                 
                 // 5. Punto medio de la longitud (Aquí es donde la curva "S" cambia de dirección)
-                $mitad_L = $l_px / 2;
+                //$mitad_L = $l_px / 2;
+                $cp1 = $l_px * 0.35;
+                $cp2 = $l_px * 0.65;
             @endphp
 
             <div class="w-full max-w-[440px] h-auto flex items-center justify-center py-4 transition-all duration-300">
                 
-                <svg viewBox="0 0 {{ $ancho_lienzo }} {{ $altura_lienzo }}" width="100%" height="100%" class="overflow-visible drop-shadow-2xl">
-
+                <svg
+                    viewBox="0 0 {{ $ancho_lienzo }} {{ $altura_lienzo }}"
+                    preserveAspectRatio="xMidYMid meet"
+                    width="100%"
+                    height="100%"
+                    class="overflow-visible">
+                    
                     <defs>
-                        <marker id="flecha" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                            <path d="M 0 1 L 10 5 L 0 9 z" fill="#6366f1" />
+                        <marker id="flecha"
+                            viewBox="0 0 10 10"
+                            refX="5"
+                            refY="5"
+                            markerWidth="8"
+                            markerHeight="8"
+                            orient="auto-start-reverse">
+
+                            <path d="M 0 1 L 10 5 L 0 9 z"
+                                fill="#6366f1"/>
                         </marker>
+
+                        <linearGradient
+                            id="ductGradient"
+                            x1="0%"
+                            y1="0%"
+                            x2="100%"
+                            y2="100%">
+
+                            <stop offset="0%" stop-color="#ffffff"/>
+                            <stop offset="100%" stop-color="#dbeafe"/>
+
+                        </linearGradient>
+
+                        <filter id="glow">
+
+                            <feDropShadow
+                                dx="0"
+                                dy="0"
+                                stdDeviation="2"
+                                flood-color="#6366f1"
+                                flood-opacity="0.25"/>
+
+                        </filter>
+
+                        <pattern
+                            id="grid"
+                            width="10"
+                            height="10"
+                            patternUnits="userSpaceOnUse">
+
+                            <path
+                                d="M 10 0 L 0 0 0 10"
+                                fill="none"
+                                stroke="#334155"
+                                stroke-width="0.4"/>
+                        </pattern>
+
+                        <pattern
+                            id="gridMajor"
+                            width="50"
+                            height="50"
+                            patternUnits="userSpaceOnUse">
+
+                            <path
+                                d="M 50 0 L 0 0 0 50"
+                                fill="none"
+                                stroke="#475569"
+                                stroke-width="0.8"/>
+                        </pattern>
+
+
+                        <linearGradient
+                            id="ductGradient"
+                            x1="0%"
+                            y1="0%"
+                            x2="100%"
+                            y2="100%">
+
+                            <stop offset="0%" stop-color="#f8fafc"/>
+                            <stop offset="50%" stop-color="#cbd5e1"/>
+                            <stop offset="100%" stop-color="#94a3b8"/>
+
+                        </linearGradient>
+
                     </defs>
+                    
+                    {{-- ==================== CUADRÍCULA ==================== --}}
+                    <rect
+                        width="{{ $ancho_lienzo }}"
+                        height="{{ $altura_lienzo }}"
+                        fill="url(#grid)"
+                    />
+                    
+
+
 
                     <g transform="translate({{ $padX }}, {{ $padY }})">
+                        
+                        {{--  SHAPE PRINCIPAL  --}}
+                        <path
+                            d="M 0,0
+                            C {{ $cp1 }},0 {{ $cp2 }},{{ $o_px }} {{ $l_px }},{{ $o_px }}
+                            L {{ $l_px }},{{ $o_px + $w_px }}
+                            C {{ $cp2 }},{{ $o_px + $w_px }} {{ $cp1 }},{{ $w_px }} 0,{{ $w_px }}
+                            Z"
+                            fill="url(#ductGradient)"
+                            stroke="#213254"
+                            stroke-width="3"
+                            filter="url(#glow)"
+                            class="transition-all duration-300"
+                        />
 
-                        {{-- ==================== SHAPE PRINCIPAL ==================== --}}
-                        <path d="M 0,0 
-                                C {{ $mitad_L }},0 {{ $mitad_L }},{{ $o_px }} {{ $l_px }},{{ $o_px }}
-                                L {{ $l_px }},{{ $o_px + $w_px }}
-                                C {{ $mitad_L }},{{ $o_px + $w_px }} {{ $mitad_L }},{{ $w_px }} 0,{{ $w_px }} 
-                                Z" 
-                            fill="#ffffff" 
-                            stroke="#6366f1" 
-                            stroke-width="4" 
-                            class="transition-all duration-300" />
-
-                        {{-- Línea central (eje neutro) --}}
-                        <path d="M 0,{{ $w_px / 2 }} 
-                                C {{ $mitad_L }},{{ $w_px / 2 }} {{ $mitad_L }},{{ $o_px + ($w_px / 2) }} {{ $l_px }},{{ $o_px + ($w_px / 2) }}" 
+                        {{-- Línea punteada central (eje neutro) --}}
+                        <path 
+                            d="M 0,{{ $w_px / 2 }} 
+                            C {{ $cp1 }},{{ $w_px / 2 }} {{ $cp2 }},{{ $o_px + ($w_px / 2) }} {{ $l_px }},{{ $o_px + ($w_px / 2) }}" 
                             fill="transparent" 
-                            stroke="#4338ca" 
+                            stroke="#22c55e" 
                             stroke-width="2.5"
-                            stroke-dasharray="8,5" />
+                            stroke-dasharray="8"
+                            stroke-linecap="round"
+                        />
 
-                        {{-- Bordes laterales (entrada y salida) --}}
-                        <line x1="0"        y1="0"              x2="0"        y2="{{ $w_px }}"              stroke="#818cf8" stroke-width="5" stroke-linecap="round" />
-                        <line x1="{{ $l_px }}" y1="{{ $o_px }}" x2="{{ $l_px }}" y2="{{ $o_px + $w_px }}" stroke="#818cf8" stroke-width="5" stroke-linecap="round" />
+                        {{-- Bordes laterales (entrada del ducto) --}}
+                        <line  
+                            x1="0"        
+                            y1="0"              
+                            x2="0"        
+                            y2="{{ $w_px }}"              
+                            stroke="#213254" 
+                            stroke-width="2" 
+                            stroke-linecap="round" 
+                        />
+                        {{-- Bordes laterales (salida del ducto) --}}
+                        <line 
+                            x1="{{ $l_px }}"
+                            y1="{{ $o_px }}" 
+                            x2="{{ $l_px }}" 
+                            y2="{{ $o_px + $w_px }}" 
+                            stroke="#213254" 
+                            stroke-width="2" 
+                            stroke-linecap="round"
+                        />
 
-                        {{-- ==================== COTA W (izquierda) ==================== --}}
-                        <line x1="-45" y1="0"         x2="0" y2="0"         stroke="#334155" stroke-width="1.5" stroke-dasharray="4,4" />
-                        <line x1="-45" y1="{{ $w_px }}" x2="0" y2="{{ $w_px }}" stroke="#334155" stroke-width="1.5" stroke-dasharray="4,4" />
-                        <line x1="-35" y1="2"
-                            x2="-35" y2="{{ $w_px - 2 }}"
-                            stroke="#6366f1" stroke-width="2"
+                        {{-- COTA W (linea punteada arriba)  --}}
+                        <line 
+                            x1="-45" 
+                            y1="0"         
+                            x2="0" 
+                            y2="0"         
+                            stroke="#6366f1" 
+                            stroke-width="1.5" 
+                            stroke-dasharray="3" 
+                        />
+                        {{-- COTA W (linea punteada abajo)  --}}
+                        <line 
+                            x1="-45" 
+                            y1="{{ $w_px }}" 
+                            x2="0" 
+                            y2="{{ $w_px }}" 
+                            stroke="#6366f1" 
+                            stroke-width="1.5" 
+                            stroke-dasharray="3"
+                        />
+
+                        {{--  COTA W: (flecha izquierda)  --}}
+                        <line 
+                            x1="-45" 
+                            y1="8"
+                            x2="-45" 
+                            y2="{{ $w_px - 8 }}"
+                            stroke="#6366f1" 
+                            stroke-width="2"
                             marker-start="url(#flecha)"
-                            marker-end="url(#flecha)" />
-                        <text x="-48" y="{{ $w_px / 2 + 5 }}"
-                            fill="#818cf8" font-size="14" font-weight="900"
+                            marker-end="url(#flecha)"
+                        />
+                        <text 
+                            x="-48" 
+                            y="{{ $w_px / 2 + 5 }}"
+                            fill="#6366f1" 
+                            font-size="14" 
+                            font-weight="900"
                             text-anchor="end">
                             W: {{ $ancho_w }}"
                         </text>
 
-                        {{-- ==================== COTA L (inferior) ==================== --}}
-                        <line x1="0"           y1="{{ $w_px }}"              x2="0"           y2="{{ $w_px + $o_px + 45 }}" stroke="#334155" stroke-width="1.5" stroke-dasharray="4,4" />
-                        <line x1="{{ $l_px }}" y1="{{ $w_px + $o_px }}"     x2="{{ $l_px }}" y2="{{ $w_px + $o_px + 45 }}" stroke="#334155" stroke-width="1.5" stroke-dasharray="4,4" />
-                        <line x1="2"
+                        {{--  COTA L: (línea vertical izquierda)  --}}
+                        <line 
+                            x1="0"           
+                            y1="{{ $w_px }}"              
+                            x2="0"           
+                            y2="{{ $w_px + $o_px + 35 }}" 
+                            stroke="#6366f1" 
+                            stroke-width="2" 
+                            stroke-dasharray="4,4" 
+                        />
+                        {{--  COTA L: (línea vertical derecha)  --}}
+                        <line 
+                            x1="{{ $l_px }}" 
+                            y1="{{ $w_px + $o_px }}" 
+                            x2="{{ $l_px }}" 
+                            y2="{{ $w_px + $o_px + 35 }}" 
+                            stroke="#6366f1" 
+                            stroke-width="2" 
+                            stroke-dasharray="4,4" 
+                        />
+                        {{--  COTA L: (flecha inferior)  --}}
+                        <line 
+                            x1="8"
                             y1="{{ $w_px + $o_px + 35 }}"
-                            x2="{{ $l_px - 2 }}"
+                            x2="{{ $l_px - 8 }}"
                             y2="{{ $w_px + $o_px + 35 }}"
-                            stroke="#6366f1" stroke-width="2"
+                            stroke="#6366f1" 
+                            stroke-width="2"
                             marker-start="url(#flecha)"
-                            marker-end="url(#flecha)" />
-                        <text x="{{ $l_px / 2 }}" y="{{ $w_px + $o_px + 60 }}"
-                            fill="#818cf8" font-size="14" font-weight="900"
+                            marker-end="url(#flecha)" 
+                        />
+                        <text 
+                            x="{{ $l_px / 2 }}"
+                            y="{{ $w_px + $o_px + 60 }}"
+                            fill="#818cf8" 
+                            font-size="14" 
+                            font-weight="900"
                             text-anchor="middle">
                             L: {{ $longitud_l }}"
                         </text>
-
-                        {{-- ==================== COTA O (derecha) ==================== --}}
+                        
+                        {{--  COTA O: (derecha)  --}}
                         @if($desvio_o > 0)
 
                             {{-- Línea guía superior --}}
                             <line
                                 x1="0"
                                 y1="0"
-                                x2="{{ $l_px + 55 }}"
+                                x2="{{ $l_px + 35 }}"
                                 y2="0"
-                                stroke="#334155"
-                                stroke-width="1.5"
+                                stroke="#6366f1"
+                                stroke-width="2"
                                 stroke-dasharray="4,4" />
 
                             {{-- Línea guía inferior --}}
                             <line
                                 x1="{{ $l_px }}"
                                 y1="{{ $o_px }}"
-                                x2="{{ $l_px + 55 }}"
+                                x2="{{ $l_px + 35 }}"
                                 y2="{{ $o_px }}"
-                                stroke="#334155"
-                                stroke-width="1.5"
+                                stroke="#6366f1"
+                                stroke-width="2"
                                 stroke-dasharray="4,4" />
 
                             {{-- Cota O --}}
                             <line
                                 x1="{{ $l_px + 40 }}"
-                                y1="2"
+                                y1="8"
                                 x2="{{ $l_px + 40 }}"
-                                y2="{{ $o_px - 2 }}"
+                                y2="{{ $o_px - 8 }}"
                                 stroke="#6366f1"
                                 stroke-width="2"
                                 marker-start="url(#flecha)"
@@ -200,9 +365,48 @@
                         @endif
 
                         {{-- ==================== PUNTOS CENTRALES ==================== --}}
-                        <circle cx="0"        cy="{{ $w_px / 2 }}"              r="4" fill="#22c55e" />
-                        <circle cx="{{ $l_px }}" cy="{{ $o_px + ($w_px / 2) }}" r="4" fill="#22c55e" />
+                       <g>
 
+                            <circle
+                                cx="0"
+                                cy="{{ $w_px / 2 }}"
+                                r="12"
+                                fill="transparent"
+                                stroke="#22c55e"
+                                stroke-width="1"
+                                opacity="0.35"/>
+
+                            <circle
+                                cx="0"
+                                cy="{{ $w_px / 2 }}"
+                                r="6"
+                                fill="#22c55e"
+                                stroke="white"
+                                stroke-width="2"/>
+
+                        </g>
+
+                        <g>
+
+                            <circle
+                                cx="{{ $l_px }}"
+                                cy="{{ $o_px + ($w_px / 2) }}"
+                                r="12"
+                                fill="transparent"
+                                stroke="#22c55e"
+                                stroke-width="1"
+                                opacity="0.35"/>
+
+                            <circle
+                                cx="{{ $l_px }}"
+                                cy="{{ $o_px + ($w_px / 2) }}"
+                                r="6"
+                                fill="#22c55e"
+                                stroke="white"
+                                stroke-width="2"/>
+
+                        </g>
+        
                     </g>
                 </svg>
             
